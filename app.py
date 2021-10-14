@@ -24,6 +24,7 @@ def get_resource(resource_collection):
     inputs = rest_utils.RESTContext(request)
     rest_utils.log_request("resource_by_id", inputs)
     db_service = ServiceFactory(resource_collection)
+    template = dict()
 
     if db_service is None:
         return Response("Resource Collection {} NOT FOUND".format(resource_collection), status=404, content_type="text/plain")
@@ -36,7 +37,8 @@ def get_resource(resource_collection):
         return rsp
 
     elif inputs.method == "POST":
-
+        template.update(inputs.data)
+        res = db_service.create(template)
 
     else:
         return Response("Method Not Implemented.", status=501, content_type="text/plain")

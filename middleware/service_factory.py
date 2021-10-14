@@ -5,11 +5,11 @@ from application_services.Orders.order_item_service import OrderItemService
 
 def get_service_factory(resource_collection):
 
-    _service_factory = { "order_item": OrderItemService({"db_name": "orders",
+    _service_factory = { "order": OrderItemService({"db_name": "orders",
                                                                     "table_name": "order_item",
                                                                     "key_columns": ["order_id"]}),
-                                    "product_menu": ProductMenuService({"db_name": "orders",
-                                                                    "table_name": "product_item",
+                                    "product": ProductMenuService({"db_name": "orders",
+                                                                    "table_name": "product_menu",
                                                                     "key_columns": ["product_id"]})
                        }
 

@@ -8,7 +8,6 @@ logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-
 def _get_db_connection():
 
     db_connect_info = context.get_db_info()
@@ -21,7 +20,6 @@ def _get_db_connection():
        **db_info
     )
     return db_connection
-
 
 def get_by_prefix(db_schema, table_name, column_name, value_prefix):
 
@@ -38,7 +36,6 @@ def get_by_prefix(db_schema, table_name, column_name, value_prefix):
     conn.close()
 
     return res
-
 
 def _get_where_clause_args(template):
 
@@ -59,7 +56,6 @@ def _get_where_clause_args(template):
 
     return clause, args
 
-
 def find_by_template(db_schema, table_name, template, field_list):
 
     wc, args = _get_where_clause_args(template)
@@ -76,6 +72,30 @@ def find_by_template(db_schema, table_name, template, field_list):
 
     return res
 
+def _insert(self, row):
+    keys = row.keys()
+    q = "INSERT into " + self._table_file + " "
+    s1 = list(keys)
+    s1 = ",".join(s1)
+
+    q += "(" + s1 + ") "
+
+    v = ["%s"] * len(keys)
+    v = ",".join(v)
+
+    q += "values(" + v + ")"
+
+    params = tuple(row.values())
+
+    result = self.run_q(q, params, fetch=False)
+
+    return result
+
+def create(self, transfer_json):
+    result = _insert(transfer_json)
+    if result:
+        result = self._get_key(transfer_json)
+    return result
 
 def update(self, template, row):
     set_clause, set_args = self.transfer_json_to_set_clause(row)

@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+import data_services.rdb_data_service as service
 
 
 class BaseApplicationException:
@@ -22,6 +23,10 @@ class BaseApplicationResource(ABC):
 
     def get_db_name(self):
         return self._db_name
+
+    def get_by_template(self, template):
+        res = service.find_by_template(self._db_name, self.get_table_name(), template, None)
+        return res
 
     @abstractmethod
     def get_links(self, resource_data):

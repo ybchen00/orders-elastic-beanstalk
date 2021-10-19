@@ -45,7 +45,7 @@ class BaseApplicationResource(ABC):
 
     def update(self, key_values, transfer_json):
         template = dict(zip(self._key_columns, key_values))
-        result = service.update(template, transfer_json)
+        result = service.update(self._db_name, self._table_name, template, transfer_json)
         if result:
             result = self._get_key(template)
 

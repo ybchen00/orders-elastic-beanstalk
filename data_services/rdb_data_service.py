@@ -168,23 +168,19 @@ def _insert(db_schema, table_name, row):
     cur = conn.cursor()
 
     sql = "INSERT into " + db_schema + "." + table_name + " "
-    k, v = get_dictionary_as_sql(row)
+
+    keys = list(row.keys())
+    k = ",".join(keys)
+    v = ["%s"] * len(keys)
+    v = ",".join(v)
     sql += "(" + k + ") " "values(" + v + ")"
     print(sql)
 
-    res = cur.execute(sql)
-    result = cur.fetchall()
-
-    conn.close()
+    result = cur.execute(sql, tuple(row.values()))
+    conn.commit()
+    cur.close()
 
     return result
-
-def get_dictionary_as_sql(row):
-    keys = list(row.keys())
-    values = list(row.values())
-    s1 = ",".join(keys)
-    s2 = '"' + "\",\"".join(str(item) for item in values) + '"'
-    return s1, s2
 
 
 def create(db_schema, table_name, key_columns, transfer_json):
@@ -195,12 +191,17 @@ def create(db_schema, table_name, key_columns, transfer_json):
 
 
 def update(db_schema, table_name, template, row):
+    conn = _get_db_connection()
+    cur = conn.cursor()
 
     set_clause, set_args = transfer_json_to_set_clause(row)
     where_clause = template_to_where_clause(template)
-    q = "UPDATE  " + db_schema + "." + table_name + " " + set_clause + " " + where_clause
-    print(q)
-    result = run_q(q, set_args, fetch=False)
+    sql = "UPDATE  " + db_schema + "." + table_name + " " + set_clause + " " + where_clause
+    print(sql)
+
+    result = cur.execute(sql, set_args)
+    conn.commit()
+    cur.close()
 
     return result
 

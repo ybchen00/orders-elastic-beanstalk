@@ -2,6 +2,9 @@ import os
 import pymysql
 from application_services.Orders.product_menu_service import ProductMenuService
 from application_services.Orders.order_item_service import OrderItemService
+from application_services.Login.address_service import UserAddressService
+from application_services.Login.user_service import UserService
+from application_services.Stores.address_service import StoreAddressService
 
 
 def get_service_factory(resource_service, resource_collection):
@@ -12,8 +15,20 @@ def get_service_factory(resource_service, resource_collection):
                                                                   "table_name": "product_menu",
                                                                   "key_columns": ["product_id"]})
                                    },
-                        "login": {}, #TODO
-                        "stores": {} #TODO
+                        "login": {"address": UserAddressService({"db_name": "login",
+                                                                 "table_name": "address",
+                                                                 "key_columns": ["address_id"]}),
+                                  "user": UserService({"db_name": "login",
+                                                       "table_name": "user",
+                                                       "key_columns": ["userID"]}),
+                                  },
+                        "stores": {"address": StoreAddressService({"db_name": "stores",
+                                                                   "table_name": "address",
+                                                                   "key_columns": ["address_id"]}),
+                                   "store": UserService({"db_name": "stores",
+                                                         "table_name": "store",
+                                                         "key_columns": ["store_id"]}),
+                                   }  # TODO
                         }
     print(resource_service in _service_factory)
     print(_service_factory[resource_service])

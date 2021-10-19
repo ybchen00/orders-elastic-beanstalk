@@ -1,8 +1,7 @@
 from application_services.base_application_resource import BaseApplicationResource
 
 
-class ProductMenuService(BaseApplicationResource):
-
+class StoreAddressService(BaseApplicationResource):
     def get_links(self, resource_data):
         pass
 

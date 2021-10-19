@@ -13,15 +13,13 @@ logger.setLevel(logging.INFO)
 app = Flask(__name__)
 CORS(app)
 
-microservice = "orders"
-
 
 @app.route('/')
 def hello_world():
     return '<u>Hello World!</u>'
 
-@app.route('/api/{}/<resource_collection>'.format(microservice), methods=["GET", "POST"])
-def get_resource(resource_collection):
+@app.route('/api/<microservice>/<resource_collection>', methods=["GET", "POST"])
+def get_resource(microservice, resource_collection):
     inputs = rest_utils.RESTContext(request)
     rest_utils.log_request("resource_by_id", inputs)
     db_service = get_service_factory(microservice, resource_collection)
@@ -48,10 +46,13 @@ def get_resource(resource_collection):
         return Response("Method Not Implemented.", status=501, content_type="text/plain")
 
 
-@app.route('/api/{}/<resource_collection>/<resource_id>'.format(microservice), methods=["GET", "PUT"])
-def get_resource_by_id(resource_collection, resource_id):
+
+@app.route('/api/<microservice>/<resource_id>', methods=["GET", "PUT", "DELETE"])
+def get_resource_by_id(microservice, resource_collection, resource_id):
     inputs = rest_utils.RESTContext(request)
     db_service = get_service_factory(microservice, resource_collection)
+
+    template = dict()
 
     if inputs.method == "GET":
         key_columns = db_service.get_key_columns() # TODO: okay because key columns is len() = 1 currently with db schemas
@@ -62,14 +63,23 @@ def get_resource_by_id(resource_collection, resource_id):
         rsp = Response(res_json, status=200, content_type="application/json")
         return rsp
 
+    if inputs.method == "PUT":
+        template.update(inputs.data)
+        res = db_service.update(["21"], template)
+
+        res_json = json.dumps(res, default=str)
+        rsp = Response(res_json, status=200, content_type="application/json")
+        return rsp
     else:
-        return Response("not implemented.", status=501)
+        return Response("Method Not Implemented.", status=501, content_type="text/plain")
 
 
 @app.route("/api/<primary_table>/<key>/<lookup_table>", methods=["GET", "POST"])
 def do_based_on_foreignkey(primary_table, key, lookup_table):
+    return Response("Pass Not Implemented.", status=501, content_type="text/plain")
     pass
-"""    rsp = Response("INTERNAL ERROR", status=500, content_type="text/plain")
+"""    
+rsp = Response("INTERNAL ERROR", status=500, content_type="text/plain")
 
     try:
         inputs = rest_utils.RESTContext(request)

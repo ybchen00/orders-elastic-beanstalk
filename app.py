@@ -16,7 +16,7 @@ CORS(app)
 
 @app.route('/')
 def hello_world():
-    return '<u>Hello World!</u>'
+    return '<u>Welcome to Team in the Clouds!!</u>'
 
 @app.route('/api/<microservice>/<resource_collection>', methods=["GET", "POST"])
 def get_resource(microservice, resource_collection):
@@ -47,16 +47,16 @@ def get_resource(microservice, resource_collection):
 
 
 
-@app.route('/api/<microservice>/<resource_id>', methods=["GET", "PUT", "DELETE"])
+@app.route('/api/<microservice>/<resource_collection>/<resource_id>', methods=["GET", "PUT", "DELETE"])
 def get_resource_by_id(microservice, resource_collection, resource_id):
     inputs = rest_utils.RESTContext(request)
     db_service = get_service_factory(microservice, resource_collection)
 
     template = dict()
+    key_columns = db_service.get_key_columns()  # TODO: okay because key columns is len() = 1 currently with db schemas
+    template = {key_columns[0]: resource_id}  # TODO: implement multiple key columns ?? do we need this??
 
     if inputs.method == "GET":
-        key_columns = db_service.get_key_columns() # TODO: okay because key columns is len() = 1 currently with db schemas
-        template = {key_columns[0]: resource_id}  # TODO: implement multiple key columns ?? do we need this??
         res = db_service.get_by_template(template)
 
         res_json = json.dumps(res, default=str)
@@ -64,8 +64,9 @@ def get_resource_by_id(microservice, resource_collection, resource_id):
         return rsp
 
     if inputs.method == "PUT":
+        resource_columns = list(template.values())
         template.update(inputs.data)
-        res = db_service.update(["21"], template)
+        res = db_service.update(resource_columns, template)
 
         res_json = json.dumps(res, default=str)
         rsp = Response(res_json, status=200, content_type="application/json")

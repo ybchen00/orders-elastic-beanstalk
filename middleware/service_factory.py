@@ -28,10 +28,9 @@ def get_service_factory(resource_service, resource_collection):
                                    "store": UserService({"db_name": "stores",
                                                          "table_name": "store",
                                                          "key_columns": ["store_id"]}),
-                                   }  # TODO
+                                   }
                         }
-    print(resource_service in _service_factory)
-    print(_service_factory[resource_service])
+
     if resource_service in _service_factory and resource_collection in _service_factory[resource_service]:
         return _service_factory[resource_service][resource_collection]
     else:

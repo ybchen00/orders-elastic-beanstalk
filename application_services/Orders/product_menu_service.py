@@ -3,8 +3,8 @@ from application_services.base_application_resource import BaseApplicationResour
 
 class ProductMenuService(BaseApplicationResource):
 
-    def get_links(self, resource_data):
-        pass
-
     def __init__(self, configuration):
         super().__init__(configuration)
+
+    def validate_data(self, template):
+        return None

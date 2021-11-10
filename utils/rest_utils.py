@@ -28,7 +28,7 @@ class RESTContext:
 
         log_message = ""
 
-        self.limit = RESTContext._default_limit
+        self.url = request_context.url
 
         self.path = request_context.path
         args = dict(request_context.args)
@@ -49,10 +49,16 @@ class RESTContext:
             pass
 
         args, limit = self._get_and_remove_arg(args, "limit")
-        self.limit = limit
+        if not limit:
+            self.limit = RESTContext._default_limit
+        else:
+            self.limit = int(limit)
 
         args, offset = self._get_and_remove_arg(args, "offset")
-        self.offset = offset
+        if not offset:
+            self.offset = 0
+        else:
+            self.offset = int(offset)
 
         args, order_by = self._get_and_remove_arg(args, "order_by")
         self.order_by = order_by
@@ -98,6 +104,43 @@ class RESTContext:
         result = json.dumps(result, indent=2)
         return result
 
+    @staticmethod
+    def _add_query(url, query_name, old_query_parameter, query_parameter):
+        if query_name + "=" in url:
+            url = url.replace(query_name + "=" + str(old_query_parameter), "offset=" + str(query_parameter))
+        elif "?" in url:
+            url += "&{}=".format(query_name) + str(query_parameter)
+        else:
+            url += "?{}=".format(query_name) + str(query_parameter)
+        return url
+
+    # TODO: should this be here?
+    def get_link(self, direction=None):
+        url = self.url.replace(self.host_url, "")
+
+        if direction == "next":
+            new_offset = self.offset + self.limit
+            url = self._add_query(url, "offset", self.offset, new_offset)
+
+        elif direction == "prev":
+            new_offset = self.offset - self.limit
+            if new_offset < 0:
+                url = self._add_query(url, "offset", self.offset, 0)
+            else:
+                url = self._add_query(url, "offset", self.offset, new_offset)
+
+        return url
+
+    def get_links(self):
+        self_link = {"rel": "self", "href": self.get_link()}
+        next_link = {"rel": "next", "href": self.get_link("next")}
+        prev_link = {"rel": "prev", "href": self.get_link("prev")}
+
+        return [self_link, prev_link, next_link]
+
+    def get_location(self, key):
+        url = self.url.replace(self.host_url, "") + "/" + key
+        return url
 
     @classmethod
     def _get_and_remove_arg(cls, args, arg_name):
@@ -107,10 +150,8 @@ class RESTContext:
 
         return args, val
 
-# 1. Extract the input information from the requests object.
-# 2. Log the information
-# 3. Return extracted information.
 
+# TODO
 def log_response(method, status, data, txt):
     msg = {
         "method": method,
@@ -122,6 +163,7 @@ def log_response(method, status, data, txt):
     logger.debug(str(datetime.now()) + ": \n" + json.dumps(msg, indent=2, default=str))
 
 
+# TODO
 def log_request(method_name, request_context):
 
     info = {
@@ -133,6 +175,7 @@ def log_request(method_name, request_context):
     logger.debug(str(datetime.now()) + ": \n" + msg)
 
 
+# TODO move?
 def split_key_string(s):
 
     result = s.split("_")

@@ -8,6 +8,15 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 
+class BaseApplicationException(Exception): # TODO should be in base_application_resource and errors should only be in there
+
+    def __init__(self, message):
+        self.message = message
+        super().__init__(self.message)
+
+    def __str__(self):
+        return self.message
+
 def _get_db_connection():
     db_connect_info = service_factory.get_db_info()
 
@@ -20,6 +29,7 @@ def _get_db_connection():
     )
     return db_connection
 
+
 def template_to_where_clause(t):
     s = ""
 
@@ -28,16 +38,16 @@ def template_to_where_clause(t):
 
     for (k, v) in t.items():
         if s != "":
-            s += " AND "
+            s += " and "
         s += k + "='" + v + "'"
 
     if s != "":
-        s = "WHERE " + s
+        s = "where " + s
 
     return s
 
-def transfer_json_to_set_clause(t_json):
 
+def transfer_json_to_set_clause(t_json):
     args = []
     terms = []
 
@@ -60,10 +70,9 @@ def get_by_prefix(db_schema, table_name, column_name, value_prefix):
 
     res = cur.execute(sql)
     res = cur.fetchall()
-
     conn.close()
-
     return res
+
 
 
 def _get_where_clause_args(template):
@@ -78,28 +87,44 @@ def _get_where_clause_args(template):
             terms.append(k + "=%s")
             args.append(v)
 
-        clause = " where " + " AND ".join(terms)
+        clause = " where " + " and ".join(terms)
 
     return clause, args
 
 
 def find_by_template(db_schema, table_name,
-                     template):  # TODO: the schema and table_name should really be passed in a better way
+                     template, fields=None, limit=None, offset=None):
     wc, args = _get_where_clause_args(template)
 
     conn = _get_db_connection()
     cur = conn.cursor()
 
-    sql = "select * from " + db_schema + "." + table_name + " " + wc
+    if not fields:
+        fields = "*"
+
+    sql = "select " + fields + " from " + db_schema + "." + table_name + " " + wc + " limit "
+
+    if limit:
+        restrictions = str(offset) + ", " + str(limit)
+    else:
+        restrictions = str(limit)
+
+    sql += restrictions + ";"
+
     print(sql)
-    res = cur.execute(sql, args=args)
-    res = cur.fetchall()
 
-    conn.close()
+    try:
+        res = cur.execute(sql, args=args)
+        res = cur.fetchall()
 
-    return res
+        conn.close()
+        return res
+
+    except Exception as e:
+        raise BaseApplicationException(e.args[1])
 
 
+"""
 def _get_key(jto, key_columns):
     if key_columns is not None and len(key_columns) > 0:
         result = {k: jto[k] for k in key_columns}
@@ -107,67 +132,14 @@ def _get_key(jto, key_columns):
         result = None
 
     return result
-
-
-def run_q(self, q, args, cnx=None, cursor=None, commit=True, fetch=True):
-    """
-
-    :param q: The query string to run.
-    :param fetch: True if this query produces a result and the function should perform and return fetchall()
-    :return:
-    """
-
-    cursor_created = False
-    cnx_created = False
-    result = None
-
-    try:
-        if cnx is None:
-            cnx = self._cnx
-            cursor = self._cnx.cursor()
-            cursor_created = True
-        else:
-            cnx = self._cnx
-            cursor = cnx.cursor()
-            cnx_created = True
-            cursor_created = True
-
-        log_message = cursor.mogrify(q, args)
-        logger.debug(log_message)
-
-        res = cursor.execute(q, args)
-
-        if fetch:
-            result = cursor.fetchall()
-        else:
-            result = res
-
-        if commit:
-            cnx.commit()
-        if cursor_created:
-            cursor.close()
-        if cnx_created:
-            cnx.close()
-    except Exception as e:
-        logger.warning("RDBDataTable.run_q, e = ", e)
-
-        if commit:
-            cnx.commit()
-        if cursor_created:
-            cursor.close()
-        if cnx_created:
-            cnx.close()
-
-        raise e
-
-    return result
+"""
 
 
 def _insert(db_schema, table_name, row):
     conn = _get_db_connection()
     cur = conn.cursor()
 
-    sql = "INSERT into " + db_schema + "." + table_name + " "
+    sql = "insert into " + db_schema + "." + table_name + " "
 
     keys = list(row.keys())
     k = ",".join(keys)
@@ -176,18 +148,49 @@ def _insert(db_schema, table_name, row):
     sql += "(" + k + ") " "values(" + v + ")"
     print(sql)
 
-    result = cur.execute(sql, tuple(row.values()))
-    conn.commit()
+    try:
+        result = cur.execute(sql, tuple(row.values()))
+        conn.commit()
+        cur.close()
+        return result
+
+    except Exception as e:
+        raise BaseApplicationException(e.args[1])
+
+
+def _get_new_primary_key_value(db_schema, table_name, key_columns):
+    conn = _get_db_connection()
+    cur = conn.cursor()
+
+    keys = ""
+    for key in key_columns:
+        keys += " max({}),".format(key)
+    keys = keys[:-1]
+
+    sql = "select" + keys + " from " + db_schema + "." + table_name + ";"
+
+    print(sql)
+
+    cur.execute(sql)
+    res = cur.fetchall()
+    conn.close()
     cur.close()
+
+    res = res[0]
+    result = dict()
+    for key_max in res:
+        key = key_max[key_max.find("(") + 1:key_max.find(")")]
+        result[key] = res[key_max] + 1
 
     return result
 
 
 def create(db_schema, table_name, key_columns, transfer_json):
+    key_json = _get_new_primary_key_value(db_schema, table_name, key_columns)
+    transfer_json.update(key_json)
     result = _insert(db_schema, table_name, transfer_json)
     if result:
-        result = _get_key(transfer_json, key_columns)
-    return result
+        return key_json
 
 
 def update(db_schema, table_name, template, row):
@@ -196,7 +199,7 @@ def update(db_schema, table_name, template, row):
 
     set_clause, set_args = transfer_json_to_set_clause(row)
     where_clause = template_to_where_clause(template)
-    sql = "UPDATE  " + db_schema + "." + table_name + " " + set_clause + " " + where_clause
+    sql = "update  " + db_schema + "." + table_name + " " + set_clause + " " + where_clause
     print(sql)
 
     result = cur.execute(sql, set_args)
@@ -205,3 +208,19 @@ def update(db_schema, table_name, template, row):
 
     return result
 
+
+def delete(db_schema, table_name, template):
+    conn = _get_db_connection()
+    cur = conn.cursor()
+
+    wc, args = _get_where_clause_args(template)
+    q1 = "delete from " + db_schema + "." + table_name + wc + ";"
+    q2 = "select row_count() as no_of_rows_deleted;"
+    print(q1)
+    cur.execute(q1, args)
+    print(q2)
+    cur.execute(q2)
+    result = cur.fetchone()
+    conn.commit()
+
+    return result
